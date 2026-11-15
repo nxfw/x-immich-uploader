@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "x-immich-uploader"
+version = "0.1.0"
+description = "Upload media from X posts directly to Immich"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi==0.115.6",
+  "uvicorn[standard]==0.34.0",
+  "python-multipart==0.0.20",
+  "yt-dlp==2025.1.26",
+  "httpx==0.28.1",
+]
+
+[tool.setuptools]
+packages = ["app"]

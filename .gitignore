@@ -1,0 +1,11 @@
+cookies.txt
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+syndication-response.json
+tvd-*.html
+tvd.html
+tvd-*.js
+tvd-session.txt
