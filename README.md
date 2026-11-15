@@ -19,6 +19,7 @@ Set these values in `.env` before starting:
 ```dotenv
 IMMICH_URL=https://photos.example.com
 IMMICH_API_KEY=your-immich-api-key
+APP_PORT=8765
 ```
 
 ### NSFW or age-restricted posts
@@ -32,7 +33,7 @@ X_COOKIES_PATH=./cookies.txt
 
 The cookie file is mounted read-only and is never stored in the image. Do not commit it or expose this service publicly. Refresh the export while logged in if X still reports no media.
 
-Open <http://localhost:8000>.
+Open `http://localhost:${APP_PORT}` (normally <http://localhost:8765>).
 
 To follow logs or stop the service:
 
@@ -61,6 +62,6 @@ $env:IMMICH_API_KEY = "your-immich-api-key"
 uvicorn app.main:app --reload
 ```
 
-Then open <http://localhost:8000>.
+Then open <http://localhost:8765>.
 
 The app does not persist URLs, media, or credentials. Downloaded media is held in a temporary container directory and removed after the upload attempt. Keep this service private or put it behind authentication before exposing it to the internet. Use it only for media you are allowed to download.

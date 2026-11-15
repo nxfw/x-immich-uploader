@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir .
 COPY templates ./templates
 COPY static ./static
 ENV PYTHONUNBUFFERED=1
-EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 8765
+ENV APP_PORT=8765
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${APP_PORT}"]
 

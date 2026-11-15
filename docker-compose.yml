@@ -2,8 +2,9 @@ services:
   x-immich-uploader:
     build: .
     ports:
-      - "8000:8000"
+      - "${APP_PORT:-8765}:${APP_PORT:-8765}"
     environment:
+      APP_PORT: ${APP_PORT:-8765}
       IMMICH_URL: ${IMMICH_URL}
       IMMICH_API_KEY: ${IMMICH_API_KEY}
       X_COOKIES_FILE: ${X_COOKIES_FILE:-}
