@@ -158,7 +158,8 @@ async def upload(request: Request, url: str = Form(...), format_id: str = Form(.
             output = str(Path(temp) / "media.%(ext)s")
             if format_id.startswith("direct:"):
                 media_url = base64.urlsafe_b64decode(format_id[7:]).decode()
-                media = Path(temp) / "media.mp4"
+                upstream_name = Path(urlparse(media_url).path).name or "media.mp4"
+                media = Path(temp) / upstream_name
                 async with httpx.AsyncClient(timeout=300, follow_redirects=True) as client:
                     response = await client.get(media_url)
                     response.raise_for_status()
