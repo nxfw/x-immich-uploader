@@ -189,6 +189,6 @@ async def upload(request: Request, url: str = Form(...), format_id: str = Form(.
             if response.is_error:
                 detail = response.text[:1000]
                 raise ValueError(f"Immich returned HTTP {response.status_code}: {detail}")
-        return templates.TemplateResponse("index.html", {"request": request, "success": "Uploaded to Immich successfully."})
+        return templates.TemplateResponse("index.html", {"request": request, "success": f"Uploaded to Immich successfully: {media.name}"})
     except Exception as exc:
         return templates.TemplateResponse("index.html", {"request": request, "error": f"Upload failed: {exc}", "url": url})
