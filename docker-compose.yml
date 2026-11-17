@@ -1,5 +1,7 @@
+name: x_immich_uploader
+
 services:
-  x-immich-uploader:
+  x_immich_uploader:
     build: .
     ports:
       - "${APP_PORT:-8765}:${APP_PORT:-8765}"
@@ -11,4 +13,11 @@ services:
     volumes:
       - ${X_COOKIES_PATH:-./cookies.txt}:/run/secrets/x-cookies.txt:ro
     restart: unless-stopped
+    networks:
+      - default
+      - proxy_network
 
+networks:
+  proxy_network:
+    external: true
+  default:
