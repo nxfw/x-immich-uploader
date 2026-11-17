@@ -234,15 +234,6 @@ async def upload(request: Request, url: str = Form(...), format_id: str = Form(.
                 )
             if date_response.is_error:
                 raise ValueError(f"Immich upload succeeded, but date correction failed with HTTP {date_response.status_code}: {date_response.text[:1000]}")
-            async with httpx.AsyncClient(timeout=300) as client:
-                verify_response = await client.get(f"{IMMICH_URL}/api/assets/{asset_id}", headers=headers)
-            if verify_response.is_error:
-                raise ValueError(f"Immich upload succeeded, but date verification failed with HTTP {verify_response.status_code}: {verify_response.text[:1000]}")
-            actual_created = verify_response.json().get("fileCreatedAt")
-            if actual_created:
-                actual_time = datetime.fromisoformat(actual_created.replace("Z", "+00:00"))
-                if abs(actual_time.timestamp() - selected_time.timestamp()) > 1:
-                    raise ValueError(f"Immich kept {actual_created} instead of the requested {timestamp}.")
         return templates.TemplateResponse("index.html", {"request": request, "success": f"Uploaded to Immich successfully: {media.name}"})
     except Exception as exc:
         return templates.TemplateResponse("index.html", {"request": request, "error": f"Upload failed: {exc}", "url": url})
