@@ -8,6 +8,7 @@ import os
 import time
 import math
 import re
+import subprocess
 
 import httpx
 import yt_dlp
@@ -131,6 +132,31 @@ def get_formats(url: str):
             formats.append({"id": item["format_id"], "height": height, "label": f"{height}p ({item.get('ext', 'mp4')})"})
     return info, sorted(formats, key=lambda x: x["height"], reverse=True)
 
+def preview_data_url(url: str, formats: list[dict]) -> str | None:
+    """Return frame three of the smallest available rendition as a data URL."""
+    if not formats:
+        return None
+    with TemporaryDirectory() as temp:
+        source = Path(temp) / "preview.mp4"
+        selected = min(formats, key=lambda item: item["height"] or 10**9)
+        if selected["id"].startswith("direct:"):
+            media_url = base64.urlsafe_b64decode(selected["id"][7:]).decode()
+            with httpx.Client(timeout=120, follow_redirects=True) as client:
+                response = client.get(media_url)
+                response.raise_for_status()
+                source.write_bytes(response.content)
+        else:
+            opts = ytdlp_options(format=selected["id"], outtmpl=str(source), quiet=True)
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                ydl.download([url])
+            downloaded = list(Path(temp).glob("preview.*"))
+            if not downloaded:
+                return None
+            source = downloaded[0]
+        still = Path(temp) / "preview.jpg"
+        subprocess.run(["ffmpeg", "-y", "-i", str(source), "-vf", "select=eq(n\\,2)", "-frames:v", "1", str(still)], check=True, capture_output=True)
+        return "data:image/jpeg;base64," + base64.b64encode(still.read_bytes()).decode()
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request, "configured": bool(IMMICH_URL and IMMICH_API_KEY)})
@@ -143,7 +169,11 @@ async def resolve(request: Request, url: str = Form(...)):
         info, formats = get_formats(url)
         if not formats:
             raise ValueError("No downloadable video was found in that post.")
-        return templates.TemplateResponse("index.html", {"request": request, "url": url, "title": info.get("title", "X video"), "formats": formats, "now": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M")})
+        try:
+            preview = preview_data_url(url, formats)
+        except Exception:
+            preview = None
+        return templates.TemplateResponse("index.html", {"request": request, "url": url, "title": info.get("title", "X video"), "formats": formats, "preview": preview, "now": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M")})
     except Exception as exc:
         return templates.TemplateResponse("index.html", {"request": request, "error": f"Could not read that post: {exc}"})
 
@@ -190,6 +220,29 @@ async def upload(request: Request, url: str = Form(...), format_id: str = Form(.
             if response.is_error:
                 detail = response.text[:1000]
                 raise ValueError(f"Immich returned HTTP {response.status_code}: {detail}")
+            asset_id = response.json().get("id")
+            if not asset_id:
+                raise ValueError("Immich upload succeeded but returned no asset id.")
+            # Immich may replace fileCreatedAt during metadata extraction when
+            # the video contains its own CDN creation date. Lock the requested
+            # date through the supported asset-update endpoint, then verify it.
+            async with httpx.AsyncClient(timeout=300) as client:
+                date_response = await client.put(
+                    f"{IMMICH_URL}/api/assets/{asset_id}",
+                    json={"dateTimeOriginal": selected_time.isoformat(timespec="milliseconds").replace("+00:00", "Z")},
+                    headers={**headers, "Content-Type": "application/json", "Accept": "application/json"},
+                )
+            if date_response.is_error:
+                raise ValueError(f"Immich upload succeeded, but date correction failed with HTTP {date_response.status_code}: {date_response.text[:1000]}")
+            async with httpx.AsyncClient(timeout=300) as client:
+                verify_response = await client.get(f"{IMMICH_URL}/api/assets/{asset_id}", headers=headers)
+            if verify_response.is_error:
+                raise ValueError(f"Immich upload succeeded, but date verification failed with HTTP {verify_response.status_code}: {verify_response.text[:1000]}")
+            actual_created = verify_response.json().get("fileCreatedAt")
+            if actual_created:
+                actual_time = datetime.fromisoformat(actual_created.replace("Z", "+00:00"))
+                if abs(actual_time.timestamp() - selected_time.timestamp()) > 1:
+                    raise ValueError(f"Immich kept {actual_created} instead of the requested {timestamp}.")
         return templates.TemplateResponse("index.html", {"request": request, "success": f"Uploaded to Immich successfully: {media.name}"})
     except Exception as exc:
         return templates.TemplateResponse("index.html", {"request": request, "error": f"Upload failed: {exc}", "url": url})
