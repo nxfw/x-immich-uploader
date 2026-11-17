@@ -9,6 +9,7 @@ import time
 import math
 import re
 import subprocess
+import ipaddress
 
 import httpx
 import yt_dlp
@@ -22,7 +23,21 @@ templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 IMMICH_URL = os.getenv("IMMICH_URL", "").rstrip("/")
 IMMICH_API_KEY = os.getenv("IMMICH_API_KEY", "")
+IMMICH_PUBLIC_URL = os.getenv("IMMICH_PUBLIC_URL", "").rstrip("/")
+IMMICH_LAN_URL = os.getenv("IMMICH_LAN_URL", "").rstrip("/")
 X_COOKIES_FILE = os.getenv("X_COOKIES_FILE", "")
+
+def browser_immich_url(request: Request) -> str:
+    """Choose the browser-reachable Immich URL, not the container URL."""
+    public_url = IMMICH_PUBLIC_URL or IMMICH_URL
+    if not IMMICH_LAN_URL:
+        return public_url
+    hostname = request.headers.get("x-forwarded-host", request.url.hostname or "").split(":")[0]
+    try:
+        is_private = ipaddress.ip_address(hostname).is_private
+    except ValueError:
+        is_private = hostname in {"localhost", "127.0.0.1", "::1"}
+    return IMMICH_LAN_URL if is_private else public_url
 
 def ytdlp_options(**extra):
     options = {"quiet": True, "noplaylist": True}
@@ -234,7 +249,7 @@ async def upload(request: Request, url: str = Form(...), format_id: str = Form(.
                 )
             if date_response.is_error:
                 raise ValueError(f"Immich upload succeeded, but date correction failed with HTTP {date_response.status_code}: {date_response.text[:1000]}")
-        asset_url = f"{IMMICH_URL}/photos/{asset_id}"
+        asset_url = f"{browser_immich_url(request)}/photos/{asset_id}"
         return templates.TemplateResponse("index.html", {"request": request, "success": f"Uploaded to Immich successfully: {media.name}", "asset_url": asset_url})
     except Exception as exc:
         return templates.TemplateResponse("index.html", {"request": request, "error": f"Upload failed: {exc}", "url": url})

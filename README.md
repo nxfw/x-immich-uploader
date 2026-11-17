@@ -20,7 +20,11 @@ Set these values in `.env` before starting:
 IMMICH_URL=https://photos.example.com
 IMMICH_API_KEY=your-immich-api-key
 APP_PORT=8765
+IMMICH_PUBLIC_URL=https://photos.example.com
+IMMICH_LAN_URL=http://192.168.1.101:2283
 ```
+
+`IMMICH_URL` is the server-to-server URL used by the uploader. `IMMICH_PUBLIC_URL` is the browser-facing URL used in post-upload links. When the uploader is accessed through a private LAN IP, the app uses `IMMICH_LAN_URL` instead.
 
 ### NSFW or age-restricted posts
 
