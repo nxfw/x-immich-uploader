@@ -234,6 +234,7 @@ async def upload(request: Request, url: str = Form(...), format_id: str = Form(.
                 )
             if date_response.is_error:
                 raise ValueError(f"Immich upload succeeded, but date correction failed with HTTP {date_response.status_code}: {date_response.text[:1000]}")
-        return templates.TemplateResponse("index.html", {"request": request, "success": f"Uploaded to Immich successfully: {media.name}"})
+        asset_url = f"{IMMICH_URL}/photos/{asset_id}"
+        return templates.TemplateResponse("index.html", {"request": request, "success": f"Uploaded to Immich successfully: {media.name}", "asset_url": asset_url})
     except Exception as exc:
         return templates.TemplateResponse("index.html", {"request": request, "error": f"Upload failed: {exc}", "url": url})

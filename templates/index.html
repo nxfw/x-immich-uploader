@@ -5,7 +5,7 @@
 <h1>X <span>→</span> Immich</h1>
 <p class="sub">Save a video from an X post directly to your photo library.</p>
 {% if error %}<div class="message error">{{ error }}</div>{% endif %}
-{% if success %}<div class="message success">{{ success }}</div>{% endif %}
+{% if success %}<div class="message success">{{ success }}{% if asset_url %} <a href="{{ asset_url }}" target="_blank" rel="noopener">Open in Immich</a>{% endif %}</div>{% endif %}
 <form method="post" action="/resolve"><label for="url">X post URL</label><div class="row"><input id="url" name="url" type="url" required value="{{ url or '' }}" placeholder="https://x.com/user/status/…"><button>Find media</button></div></form>
 {% if formats %}<section><h2>{{ title }}</h2>
 {% if preview %}<img class="preview" src="{{ preview }}" alt="Preview frame from the video">{% endif %}
